@@ -1,0 +1,149 @@
+*filter
+
+# Default policies
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+
+${extra_chains}
+
+:fw-after-forward - [0:0]
+:fw-after-input - [0:0]
+:fw-after-logging-forward - [0:0]
+:fw-after-logging-input - [0:0]
+:fw-after-logging-output - [0:0]
+:fw-after-output - [0:0]
+
+:fw-before-forward - [0:0]
+:fw-before-input - [0:0]
+:fw-before-logging-forward - [0:0]
+:fw-before-logging-input - [0:0]
+:fw-before-logging-output - [0:0]
+:fw-before-output - [0:0]
+
+:fw-logging-allow - [0:0]
+:fw-logging-deny - [0:0]
+
+:fw-not-local - [0:0]
+
+:fw-reject-forward - [0:0]
+:fw-reject-input - [0:0]
+:fw-reject-output - [0:0]
+
+:fw-skip-to-policy-forward - [0:0]
+:fw-skip-to-policy-input - [0:0]
+:fw-skip-to-policy-output - [0:0]
+
+:fw-track-forward - [0:0]
+:fw-track-input - [0:0]
+:fw-track-output - [0:0]
+
+:fw-user-forward - [0:0]
+
+:fw-user-input - [0:0]
+
+:fw-user-limit - [0:0]
+:fw-user-limit-accept - [0:0]
+
+:fw-user-logging-forward - [0:0]
+:fw-user-logging-input - [0:0]
+:fw-user-logging-output - [0:0]
+
+:fw-user-output - [0:0]
+
+# Rules
+
+-A INPUT -j fw-before-logging-input
+-A INPUT -j fw-before-input
+-A INPUT -j fw-after-input
+-A INPUT -j fw-after-logging-input
+-A INPUT -j fw-reject-input
+-A INPUT -j fw-track-input
+
+-A FORWARD -j fw-before-logging-forward
+-A FORWARD -j fw-before-forward
+-A FORWARD -j fw-after-forward
+-A FORWARD -j fw-after-logging-forward
+-A FORWARD -j fw-reject-forward
+-A FORWARD -j fw-track-forward
+
+-A OUTPUT -j fw-before-logging-output
+-A OUTPUT -j fw-before-output
+-A OUTPUT -j fw-after-output
+-A OUTPUT -j fw-after-logging-output
+-A OUTPUT -j fw-reject-output
+-A OUTPUT -j fw-track-output
+
+# don't log noisy services by default
+-A fw-after-input -p udp -m udp --dport 137 -j fw-skip-to-policy-input
+-A fw-after-input -p udp -m udp --dport 138 -j fw-skip-to-policy-input
+-A fw-after-input -p tcp -m tcp --dport 139 -j fw-skip-to-policy-input
+-A fw-after-input -p tcp -m tcp --dport 445 -j fw-skip-to-policy-input
+-A fw-after-input -p udp -m udp --dport 67 -j fw-skip-to-policy-input
+-A fw-after-input -p udp -m udp --dport 68 -j fw-skip-to-policy-input
+-A fw-after-input -m addrtype --dst-type BROADCAST -j fw-skip-to-policy-input
+
+-A fw-before-forward -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+${before_forward}
+
+# ok icmp code for FORWARD
+-A fw-before-forward -p icmp -m icmp --icmp-type 3 -j ACCEPT
+-A fw-before-forward -p icmp -m icmp --icmp-type 4 -j ACCEPT
+-A fw-before-forward -p icmp -m icmp --icmp-type 11 -j ACCEPT
+-A fw-before-forward -p icmp -m icmp --icmp-type 12 -j ACCEPT
+-A fw-before-forward -p icmp -m icmp --icmp-type 8 -j ACCEPT
+-A fw-before-forward -j fw-user-forward
+
+${before_input}
+
+-A fw-before-input -i lo -j ACCEPT
+-A fw-before-input -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A fw-before-input -m conntrack --ctstate INVALID -j fw-logging-deny
+-A fw-before-input -m conntrack --ctstate INVALID -j DROP
+
+# ok icmp codes for INPUT
+-A fw-before-input -p icmp -m icmp --icmp-type 3 -j ACCEPT
+-A fw-before-input -p icmp -m icmp --icmp-type 4 -j ACCEPT
+-A fw-before-input -p icmp -m icmp --icmp-type 11 -j ACCEPT
+-A fw-before-input -p icmp -m icmp --icmp-type 12 -j ACCEPT
+-A fw-before-input -p icmp -m icmp --icmp-type 8 -j ACCEPT
+
+# allow dhcp client to work
+-A fw-before-input -p udp -m udp --sport 67 --dport 68 -j ACCEPT
+-A fw-before-input -j fw-not-local
+
+# allow MULTICAST mDNS for service discovery (be sure the MULTICAST line above
+# is uncommented)
+-A fw-before-input -d 224.0.0.251/32 -p udp -m udp --dport 5353 -j ACCEPT
+
+# allow MULTICAST UPnP for service discovery (be sure the MULTICAST line above
+# is uncommented)
+-A fw-before-input -d 239.255.255.250/32 -p udp -m udp --dport 1900 -j ACCEPT
+-A fw-before-input -j fw-user-input
+
+${before_output}
+
+-A fw-before-output -o lo -j ACCEPT
+-A fw-before-output -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+-A fw-before-output -j fw-user-output
+
+-A fw-not-local -m addrtype --dst-type LOCAL -j RETURN
+-A fw-not-local -m addrtype --dst-type MULTICAST -j RETURN
+-A fw-not-local -m addrtype --dst-type BROADCAST -j RETURN
+-A fw-not-local -j DROP
+
+-A fw-skip-to-policy-forward -j DROP
+-A fw-skip-to-policy-input -j DROP
+-A fw-skip-to-policy-output -j ACCEPT
+
+-A fw-track-output -p tcp -m conntrack --ctstate NEW -j ACCEPT
+-A fw-track-output -p udp -m conntrack --ctstate NEW -j ACCEPT
+
+${user_input}
+
+-A fw-user-limit-accept -j ACCEPT
+
+COMMIT
+# do not delete end line comment
