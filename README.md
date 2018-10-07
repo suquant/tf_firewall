@@ -43,10 +43,9 @@ provider "hcloud" {
 }
 
 module "provider" {
-  source = "git::https://github.com/suquant/tf_hcloud.git?ref=v1.0.0"
+  source = "git::https://github.com/suquant/tf_hcloud.git?ref=v1.1.0"
 
   count = "${var.hosts}"
-  token = "${var.token}"
 }
 
 locals {
@@ -56,7 +55,7 @@ locals {
 }
 
 module "firewall" {
-  source = "git::https://github.com/suquant/tf_firewall.git?ref=v1.0.0"
+  source = "git::https://github.com/suquant/tf_firewall.git?ref=v1.0.1"
 
   count       = "${var.hosts}"
   connections = "${module.provider.public_ips}"

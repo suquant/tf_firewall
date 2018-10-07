@@ -39,7 +39,6 @@ variable "extra_chains" {
 
 resource "null_resource" "firewall" {
   count       = "${var.count}"
-  depends_on  = ["null_resource.install"]
 
   triggers {
     count                         = "${var.count}"
@@ -61,19 +60,13 @@ resource "null_resource" "firewall" {
     source      = "${path.module}/templates/sysctl.conf"
   }
 
-  # Install packages
   provisioner "remote-exec" {
     inline = [
+      "sysctl -p /etc/sysctl.d/firewall.conf",
       "DEBIAN_FRONTEND=noninteractive apt install -yq iptables iptables-persistent"
     ]
   }
 
-  # Apply sysctl
-  provisioner "remote-exec" {
-    inline = [
-      "sysctl -p /etc/sysctl.d/firewall.conf"
-    ]
-  }
 
   provisioner "file" {
     destination = "/etc/iptables/rules.v4"
